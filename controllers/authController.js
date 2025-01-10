@@ -13,95 +13,83 @@ module.exports = {
 
         // information stored on the request body
 
-        const { username, email, password, phone, address, userType } = req.body;
+        const {username, email, password, phone, address, userType} = req.body;
+
+        // Validate required fileds
+        if (!username || !email || !password || !phone || !address || !userType) {
+            return res.status(400).json({message: 'All fields are required'});
+        }
 
         const hash = await bcrypt.hash(password, 10);
 
 
-        const newUser = new User({
-            username,
-            uid: uuidv4(),
-            email,
-            password: hash,
-            phone,
-            address,
-            userType
-        });
+        try {
 
-        // save the user to the database
+            const newUser = new User({
+                username,
+                uid: uuidv4(),
+                email,
+                password: hash,
+                phone,
+                address,
+                userType
+            });
 
-        await newUser.save();
+            // save the user to the database
 
-        // return a success message
+            await newUser.save();
 
-        return res.status(201).json({ message: 'User created successfully' });
+            // return a success message
 
-        // check if the user already exists in the database
-
-        // try {
-        //
-        //     await admin.auth().getUserByEmail(email);
-        //
-        // } catch (error) {
-        //
-        //     if (error.code === 'auth/user-not-found') {
-        //
-        //         // hash the password
-        //
-        //         const hash = await bcrypt.hash(password, 10);
-
-                // create a new user
-
-             //  try {
-                   // const firebaseUser = await admin.auth().createUser({
-                   //     email,
-                   //     password,
-                   //     emailVerified: false,
-                   //     disabled: false
-                   // });
-
-                   //console.log(firebaseUser.uid);
-
-                   // Extract uid from the firbaseuser object
-                  // const uid = firebaseUser.uid;
+            return res.status(201).json({message: 'User created successfully'});
 
 
-                   // const newUser = new User({
-                   //     username,
-                   //        uid: uuidv4(),
-                   //     email,
-                   //     password: hash,
-                   //     phone,
-                   //     address,
-                   //     userType
-                   // });
-
-                   // save the user to the database
-
-                  // await newUser.save();
-
-                   // return a success message
-
-                 //  return res.status(201).json({ message: 'User created successfully' });
+        } catch (error) {
+            console.log('Error creating user', error);
+            return res.status(500).json({message: 'Error creating user'});
+        }
 
 
-        //        }catch (error) {
-        //            console.log('Error creating user', error);
-        //              return res.status(500).json({ message: 'Error creating user'});
-        //        }
-        //
-        //     } else {
-        //
-        //         return res.status(400).json({ message: 'User already exists' });
-        //
-        //     }
-        //
-        //
-        //
-        // }
+    },
 
 
+    loginUser: async (req, res) => {
+
+        try {
+            const user = await User.findOne({email: req.body.email}, {__v: 0, createdAt: 0, updatedAt: 0, email: 0});
+
+
+            if (!user) {
+                return res.status(401).json({message: 'Wrong credentials'});
+            }
+
+            // compare password
+            const validPassword = await bcrypt.compare(req.body.password, user.password);
+            if (!validPassword) {
+                return res.status(401).json({message: 'Wrong credentials'});
+            }
+
+            // generate JWT token
+            const userToken = jwt.sign({
+                id: user._id,
+                userType: user.userType,
+                email: user.email,
+
+            }, process.env.JWT_SECRET, {expiresIn: '21d'});
+
+            return res.status(200).json({
+                message: 'Login successful', token: userToken, userType: user.userType,
+                email: user.email, id: user._id
+            });
+        } catch (error) {
+            console.log('Error logging in user', error);
+            return res.status(500).json({message: 'Error logging in user'});
+
+
+        }
 
     }
 
-};
+}
+
+
