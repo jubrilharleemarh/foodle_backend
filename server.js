@@ -42,3 +42,6 @@ app.listen(process.env.PORT || 5000, () => {
 // linking restaurant.js to server.js   
 const restaurantRoutes = require('./routes/restaurant');
 app.use('/restaurants', restaurantRoutes);
+
+const driverRoutes = require('./routes/driver');
+app.use('/drivers', driverRoutes);
